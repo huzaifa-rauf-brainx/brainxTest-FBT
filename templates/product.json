@@ -82,6 +82,10 @@
         "padding_bottom": 12
       }
     },
+    "frequently_bought_together": {
+      "type": "frequently_bought_together",
+      "settings": {}
+    },
     "related-products": {
       "type": "related-products",
       "settings": {
@@ -103,6 +107,7 @@
   },
   "order": [
     "main",
+    "frequently_bought_together",
     "related-products"
   ]
 }
