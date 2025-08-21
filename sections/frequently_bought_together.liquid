@@ -140,6 +140,8 @@
             <span class="fbt-prod-compare"><s>{{ fbt_prod.compare_at_price | money }}</s></span>
           </div>
         </div>
+        <div class="sold-out-message hidden">
+        </div>
       {% endfor %}
     </div>
   </div>
@@ -197,7 +199,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   const checkboxButton = document.getElementById('fbt-add-to-cart');
-  checkboxButton.addEventListener('click', function () {
+  checkboxButton.addEventListener('click', function (evt) {
+    evt.preventDefault();
     const itemsArray = [];
     checkboxes.forEach((checkbox, index) => {
       if(checkbox.checked) {
@@ -206,7 +209,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // console.log('checbox index is: ', checboxIndex);
         // console.log(document.getElementById(`fbt_variant_${ checboxIndex }`));
         const variantOption = document.getElementById(`fbt_variant_${ checboxIndex }`);
-        const cartNotif = document.querySelector('cart-notification');
         // console.log('variant id: ', variantOption.value);
         // console.log('variant name: ', variantOption.options[variantOption.selectedIndex].text);
         itemsArray.push ({
@@ -215,6 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       }
     });
+    const cart = document.querySelector('cart-notification') || document.querySelector('cart-drawer');
     if(itemsArray.length === 0) {
       console.log('zero items selected');
       return;
@@ -222,6 +225,11 @@ document.addEventListener('DOMContentLoaded', function() {
       let formData = {
       'items': itemsArray
       };
+      if (cart) {
+        formData.sections = cart.getSectionsToRender().map((section) => section.id);
+        formData.sections_url = window.location.pathname;
+        cart.setActiveElement(document.activeElement);
+      }
       fetch(window.Shopify.routes.root + 'cart/add.js', {
         method: 'POST',
         headers: {
@@ -230,11 +238,29 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         body: JSON.stringify(formData)
       })
-      .then(response => {
-        return response.json();
-      })
-      .then(data => {
-        document.querySelector('cart-notification').open();
+      .then((response) => response.json())
+      .then((response) => {
+        if (response.status) {
+          const errorMessageElement = document.querySelector('.sold-out-message');
+          errorMessageElement.classList.remove('hidden');
+          errorMessageElement.textContent = response.description || response.message;
+          setTimeout(() => {
+            errorMessageElement.classList.add('hidden');
+          }, 3000);
+          return;
+        }
+        publish(PUB_SUB_EVENTS.cartUpdate, {
+        source: 'Frequently Bought Together',
+        productVariantId: itemsArray.map((i) => i.id),
+        cartData: response,
+      }).then(() => {
+        console.log('Cart updated with FBT items');
+      }); 
+      if (!cart) {
+        window.location = window.routes.cart_url;
+        return;
+      }
+      cart.open();
       })
       .catch((error) => {
         console.error('Error:', error);
