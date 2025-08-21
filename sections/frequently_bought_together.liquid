@@ -10,6 +10,12 @@
 .frequently-bought-together .fbt-product-img-container {
   text-decoration: none;
 }
+.fbt-variant-select-container .fbt-variant-select {
+  padding: 5px 10px;
+  border: 1px solid black;
+  border-radius: 5px;
+  cursor: pointer;
+}
 .frequently-bought-together .fbt-product-img {
   width: 100px;
   height: 100px;
@@ -44,10 +50,18 @@
   font-size: 15px;
   color: black;
 }
-.fbt-product-details-item {
+.fbt-product-details .fbt-product-details-item {
   display: flex;
   gap: 20px;
   align-items: center;
+}
+.fbt-product-info .fbt-add-btn {
+  font-weight: bold;
+  text-transform: uppercase;
+  border: 1px solid black;
+  border-radius: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
 }
 
 @media screen and (max-width: 767px) {
@@ -56,7 +70,7 @@
     gap: 0;
     margin-bottom: 20px;
   }
-  .fbt-product-details-item {
+  .fbt-product-details .fbt-product-details-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 0;
@@ -79,7 +93,7 @@
           {% assign discounted_price = discounted_price | plus: fbt_prod.price %}
           <div class="fbt-product-img-wrapper" data-product-id = "{{ fbt_prod.id }}">
             <a href="{{ fbt_prod.url }}" class="fbt-product-img-container">
-            <img class="fbt-product-img" src="{{ fbt_prod.featured_image | img_url: 'small' }}" alt="{{ fbt_prod.title }}">
+            <img class="fbt-product-img" src="{{ fbt_prod.featured_image | img_url: 'large' }}" alt="{{ fbt_prod.title }}">
             </a>
             {% unless forloop.last %}
               <span class="fbt-plus">+</span>
@@ -94,8 +108,8 @@
             <s>{{ full_price | money }}</s>
           </span>
         </div>
-        <div class="fbt-product-add-to-cart">
-          
+        <div id="fbt-add-to-cart" class="fbt-add-btn">
+          Add selected to cart
         </div>
       </div>
     </div>
@@ -107,11 +121,11 @@
             <input class="fbt-checkbox" type="checkbox" name="fbt_product_{{ forloop.index }}" id="fbt_product_{{ forloop.index }}" value="{{ fbt_prod.id }}" data-product-id="{{ fbt_prod.id }}" data-price-id = "{{ fbt_prod.price }}" data-compare-id = "{{ fbt_prod.compare_at_price }}" checked>
             <label for="fbt_product_{{ forloop.index }}">{{ fbt_prod.title }}</label>
           </div>
-          <div>
+          <div class="fbt-variant-select-container">
             {% if fbt_prod.variants.size > 1 %}
               <select class="fbt-variant-select" name="fbt_variant_{{ forloop.index }}" id="fbt_variant_{{ forloop.index }}">
                 {% for variant in fbt_prod.variants %}
-                  <option value="{{ variant.id }}" data-price="{{ variant.price }}" 
+                  <option id="fbt_option_{{ forloop.index }}" value="{{ variant.id }}" data-price="{{ variant.price }}" 
                   data-compare="{{ variant.compare_at_price }}">{{ variant.title }}</option>
                 {% endfor %}
               </select>
@@ -128,7 +142,9 @@
     </div>
   </div>
 {% else %}
+<div class="page-width">
   <p>No frequently bought together products available</p>
+</div>
 {% endif %}
 
 <script>
@@ -150,11 +166,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let totalDiscounted = 0;
     checkboxes.forEach(checkbox => {
       if (checkbox.checked) {
-        const price = parseFloat(checkbox.dataset.compareId) / 100;
+        const price = checkbox.dataset.priceId / 100;
         // console.log(`Price: ${price}`);
-        const comparePrice = parseFloat(checkbox.dataset.priceId) / 100;
-        totalFull += price;
-        totalDiscounted += comparePrice;
+        const comparePrice = checkbox.dataset.compareId / 100;
+        totalFull += comparePrice;
+        totalDiscounted += price;
       }
     });
     discountedPriceElement.textContent = `$${totalDiscounted.toFixed(2)}`;
@@ -166,16 +182,61 @@ document.addEventListener('DOMContentLoaded', function() {
   variantElement.forEach(select => {
     select.addEventListener('change', function() {
       const selectedOption = this.options[this.selectedIndex];
-      const checkbox = parent.querySelector('.fbt-checkbox');
       const parent = this.closest('.fbt-product-details-item');
-     
+      const checkbox = parent.querySelector('.fbt-checkbox');
       checkbox.dataset.priceId = selectedOption.dataset.price;
       checkbox.dataset.compareId = selectedOption.dataset.compare;
+      const PriceElement = parent.querySelector('.fbt-prod-price');
+      const CompareElement = parent.querySelector('.fbt-prod-compare');
 
-      parent.querySelector('.fbt-prod-price').textContent = `$${(selectedOption.dataset.price/100).toFixed(2)}`;
-      parent.querySelector('.fbt-prod-compare').innerHTML = `<s>$${(selectedOption.dataset.compare/100).toFixed(2)}</s>`;
+      PriceElement.textContent = `$${(selectedOption.dataset.price / 100).toFixed(2)}`;
+      CompareElement.innerHTML = `<s>$${(selectedOption.dataset.compare / 100).toFixed(2)}</s>`;
       updatePrices();
     });
+  });
+  const checkboxButton = document.getElementById('fbt-add-to-cart');
+  checkboxButton.addEventListener('click', function () {
+    const itemsArray = [];
+    checkboxes.forEach((checkbox, index) => {
+      if(checkbox.checked) {
+        // console.log('ID: ', checkbox.value);
+        const checboxIndex = index + 1;
+        // console.log('checbox index is: ', checboxIndex);
+        // console.log(document.getElementById(`fbt_variant_${ checboxIndex }`));
+        const variantOption = document.getElementById(`fbt_variant_${ checboxIndex }`);
+        const cartNotif = document.querySelector('cart-notification');
+        // console.log('variant id: ', variantOption.value);
+        // console.log('variant name: ', variantOption.options[variantOption.selectedIndex].text);
+        itemsArray.push ({
+          'id': variantOption.value,
+          'quantity': 1
+        });
+      }
+    });
+    if(itemsArray.length === 0) {
+      console.log('zero items selected');
+      return;
+    }
+      let formData = {
+      'items': itemsArray
+      };
+      fetch(window.Shopify.routes.root + 'cart/add.js', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(formData)
+      })
+      .then(response => {
+        return response.json();
+      })
+      .then(data => {
+        document.querySelector('cart-notification').open();
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
   });
   updatePrices();
 });

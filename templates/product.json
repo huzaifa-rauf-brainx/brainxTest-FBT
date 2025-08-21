@@ -84,11 +84,7 @@
     },
     "frequently_bought_together": {
       "type": "frequently_bought_together",
-      "settings": {
-        "heading": "Frequently Bought Together",
-        "padding_top": 36,
-        "padding_bottom": 28
-      }
+      "settings": {}
     },
     "related-products": {
       "type": "related-products",
