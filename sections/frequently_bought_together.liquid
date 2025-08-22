@@ -1,0 +1,276 @@
+{% stylesheet %}
+.frequently-bought-together {
+  margin-top: 20px;
+  padding: 20px;
+}
+.frequently-bought-together h2 {
+  font-size: 25px;
+  margin-bottom: 15px;
+}
+.frequently-bought-together .fbt-product-img-container {
+  text-decoration: none;
+}
+.fbt-variant-select-container .fbt-variant-select {
+  padding: 5px 10px;
+  border: 1px solid black;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.frequently-bought-together .fbt-product-img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+}
+.frequently-bought-together .fbt-product-main {
+  display: flex;
+  gap: 40px;
+}
+.fbt-product-main .fbt-product-imgs {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+.fbt-product-imgs .fbt-plus {
+  font-size: 20px;
+  margin: 0 20px;
+}
+.fbt-product-info .fbt-product-prices {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fbt-product-prices .fbt-prod-discount,
+.fbt-prod-price {
+  font-size: 20px;
+  color: red;
+}
+.fbt-product-prices .fbt-prod-full,
+.fbt-prod-compare {
+  font-size: 15px;
+  color: black;
+}
+.fbt-product-details .fbt-product-details-item {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.fbt-product-info .fbt-add-btn {
+  font-weight: bold;
+  text-transform: uppercase;
+  border: 1px solid black;
+  border-radius: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+@media screen and (max-width: 767px) {
+  .frequently-bought-together .fbt-product-main {
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 20px;
+  }
+  .fbt-product-details .fbt-product-details-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    margin-bottom: 20px;
+  }
+}
+{% endstylesheet %}
+
+{% assign fbt_products = product.metafields.custom.frequently_bought_together.value %}
+{% if fbt_products.size > 0 %}
+  {% assign full_price = 0 %}
+  {% assign discounted_price = 0 %}
+  <div class="frequently-bought-together page-width">
+    <h2 class="fbt-header">Frequently Bought Together</h2>
+    <div class="fbt-product-main">
+      <div class="fbt-product-imgs">
+        {% for fbt_product in fbt_products %}
+          {% assign fbt_prod = all_products[fbt_product] %}
+          {% assign full_price = full_price | plus: fbt_prod.compare_at_price %}
+          {% assign discounted_price = discounted_price | plus: fbt_prod.price %}
+          <div class="fbt-product-img-wrapper" data-product-id = "{{ fbt_prod.id }}">
+            <a href="{{ fbt_prod.url }}" class="fbt-product-img-container">
+            <img class="fbt-product-img" src="{{ fbt_prod.featured_image | img_url: 'large' }}" alt="{{ fbt_prod.title }}">
+            </a>
+            {% unless forloop.last %}
+              <span class="fbt-plus">+</span>
+            {% endunless %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="fbt-product-info">
+        <div class="fbt-product-prices">
+          <span class="fbt-prod-discount" id="fbt-discounted">{{ discounted_price | money }}</span>
+          <span class="fbt-prod-full" id="fbt-full">
+            <s>{{ full_price | money }}</s>
+          </span>
+        </div>
+        <div id="fbt-add-to-cart" class="fbt-add-btn">
+          Add selected to cart
+        </div>
+      </div>
+    </div>
+    <div class="fbt-product-details">
+      {% for fbt_product in fbt_products %}
+        {% assign fbt_prod = all_products[fbt_product] %}
+        <div class="fbt-product-details-item">
+          <div>
+            <input class="fbt-checkbox" type="checkbox" name="fbt_product_{{ forloop.index }}" id="fbt_product_{{ forloop.index }}" value="{{ fbt_prod.id }}" data-product-id="{{ fbt_prod.id }}" data-price-id = "{{ fbt_prod.price }}" data-compare-id = "{{ fbt_prod.compare_at_price }}" checked>
+            <label for="fbt_product_{{ forloop.index }}">{{ fbt_prod.title }}</label>
+          </div>
+          <div class="fbt-variant-select-container">
+            {% if fbt_prod.variants.size > 1 %}
+              <select class="fbt-variant-select" name="fbt_variant_{{ forloop.index }}" id="fbt_variant_{{ forloop.index }}">
+                {% for variant in fbt_prod.variants %}
+                  {% if variant.available == true %}
+                    <option id="fbt_option_{{ forloop.index }}" value="{{ variant.id }}" data-price="{{ variant.price }}" 
+                    data-compare="{{ variant.compare_at_price }}">{{ variant.title }}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+            {% endif %}
+          </div>
+          <div>
+            <span class="fbt-prod-price">{{ fbt_prod.price | money }}</span>
+          </div>
+          <div>
+            <span class="fbt-prod-compare"><s>{{ fbt_prod.compare_at_price | money }}</s></span>
+          </div>
+        </div>
+        <div class="sold-out-message hidden">
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% else %}
+<div class="page-width">
+  <p>No frequently bought together products available</p>
+</div>
+{% endif %}
+
+<script>
+document.querySelectorAll('.fbt-product-details input[type="checkbox"]').forEach(checkbox => {
+  checkbox.addEventListener('change', function() {
+    const productImg = document.querySelector(`.fbt-product-img-wrapper[data-product-id="${this.dataset.productId}"]`);
+    if (productImg) {
+      productImg.style.display = this.checked ? 'block' : 'none';
+    }
+  });
+});
+document.addEventListener('DOMContentLoaded', function() {
+  const checkboxes = document.querySelectorAll('.fbt-checkbox');
+  const fullPriceElement = document.getElementById('fbt-full');
+  const discountedPriceElement = document.getElementById('fbt-discounted');
+  const variantElement = document.querySelectorAll('.fbt-variant-select');
+  function updatePrices() {
+    let totalFull = 0;
+    let totalDiscounted = 0;
+    checkboxes.forEach(checkbox => {
+      if (checkbox.checked) {
+        const price = checkbox.dataset.priceId / 100;
+        // console.log(`Price: ${price}`);
+        const comparePrice = checkbox.dataset.compareId / 100;
+        totalFull += comparePrice;
+        totalDiscounted += price;
+      }
+    });
+    discountedPriceElement.textContent = `$${totalDiscounted.toFixed(2)}`;
+    fullPriceElement.innerHTML = `<s>$${totalFull.toFixed(2)}</s>`;
+  }
+  checkboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', updatePrices);
+  });
+  variantElement.forEach(select => {
+    select.addEventListener('change', function() {
+      const selectedOption = this.options[this.selectedIndex];
+      const parent = this.closest('.fbt-product-details-item');
+      const checkbox = parent.querySelector('.fbt-checkbox');
+      checkbox.dataset.priceId = selectedOption.dataset.price;
+      checkbox.dataset.compareId = selectedOption.dataset.compare;
+      const PriceElement = parent.querySelector('.fbt-prod-price');
+      const CompareElement = parent.querySelector('.fbt-prod-compare');
+
+      PriceElement.textContent = `$${(selectedOption.dataset.price / 100).toFixed(2)}`;
+      CompareElement.innerHTML = `<s>$${(selectedOption.dataset.compare / 100).toFixed(2)}</s>`;
+      updatePrices();
+    });
+  });
+  const checkboxButton = document.getElementById('fbt-add-to-cart');
+  checkboxButton.addEventListener('click', function (evt) {
+    evt.preventDefault();
+    const itemsArray = [];
+    checkboxes.forEach((checkbox, index) => {
+      if(checkbox.checked) {
+        // console.log('ID: ', checkbox.value);
+        const checboxIndex = index + 1;
+        // console.log('checbox index is: ', checboxIndex);
+        // console.log(document.getElementById(`fbt_variant_${ checboxIndex }`));
+        const variantOption = document.getElementById(`fbt_variant_${ checboxIndex }`);
+        // console.log('variant id: ', variantOption.value);
+        // console.log('variant name: ', variantOption.options[variantOption.selectedIndex].text);
+        itemsArray.push ({
+          'id': variantOption.value,
+          'quantity': 1
+        });
+      }
+    });
+    const cart = document.querySelector('cart-notification') || document.querySelector('cart-drawer');
+    if(itemsArray.length === 0) {
+      console.log('zero items selected');
+      return;
+    }
+      let formData = {
+      'items': itemsArray
+      };
+      if (cart) {
+        formData.sections = cart.getSectionsToRender().map((section) => section.id);
+        formData.sections_url = window.location.pathname;
+        cart.setActiveElement(document.activeElement);
+      }
+      fetch(window.Shopify.routes.root + 'cart/add.js', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(formData)
+      })
+      .then((response) => response.json())
+      .then((response) => {
+        if (response.status) {
+          const errorMessageElement = document.querySelector('.sold-out-message');
+          errorMessageElement.classList.remove('hidden');
+          errorMessageElement.textContent = response.description || response.message;
+          setTimeout(() => {
+            errorMessageElement.classList.add('hidden');
+          }, 3000);
+          return;
+        }
+        publish(PUB_SUB_EVENTS.cartUpdate, {
+        source: 'Frequently Bought Together',
+        productVariantId: itemsArray.map((i) => i.id),
+        cartData: response,
+      }).then(() => {
+        if (cart && cart.classList.contains('is-empty')) {
+          cart.classList.remove('is-empty');
+        }
+        cart.renderContents(response);
+        cart.open();
+        console.log('Cart updated with FBT items');
+      }); 
+      if (!cart) {
+        window.location = window.routes.cart_url;
+        return;
+      }
+      cart.open();
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
+  });
+  updatePrices();
+});
+</script>
