@@ -254,6 +254,11 @@ document.addEventListener('DOMContentLoaded', function() {
         productVariantId: itemsArray.map((i) => i.id),
         cartData: response,
       }).then(() => {
+        if (cart && cart.classList.contains('is-empty')) {
+          cart.classList.remove('is-empty');
+        }
+        cart.renderContents(response);
+        cart.open();
         console.log('Cart updated with FBT items');
       }); 
       if (!cart) {
